@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Vague Transcode — Personal Studio</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151d31;--line:#293550;--muted:#aab6cc;--lime:#c7f36b;--pink:#ff8ba7}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#101a30,#080c17);font:16px system-ui,-apple-system,sans-serif;color:#f7f8fc}
+main{max-width:760px;margin:auto;padding:22px 16px 48px}.brand{font-weight:900;letter-spacing:.04em;font-size:12px;color:var(--lime)}
+h1{font-size:30px;line-height:1.1;margin:8px 0}p{color:var(--muted);line-height:1.5}.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:17px;margin:16px 0}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.mode{border:1px solid var(--line);border-radius:15px;background:#0e1628;color:white;padding:13px 8px;text-align:left;min-height:112px}.mode b{display:block;font-size:16px;margin-bottom:7px}.mode small{color:var(--muted);font-size:11px;line-height:1.35}.mode.active{border:2px solid var(--lime);background:#202d38}
+button,.pick{border:0;border-radius:13px;background:var(--lime);color:#121827;font-weight:800;padding:14px 16px;font-size:15px;width:100%;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}.pick{display:block;text-align:center;background:#26344d;color:white;border:1px dashed #63718a}
+input[type=file]{display:none}label{display:block;font-weight:700;margin:12px 0 8px}.muted{font-size:12px;color:var(--muted)}.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.pill{font-size:11px;border-radius:99px;padding:5px 9px;background:#26344d;color:var(--lime)}
+select{width:100%;padding:12px;border-radius:11px;background:#0e1628;color:white;border:1px solid var(--line)}
+progress{width:100%;height:12px;accent-color:var(--lime)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#080d18;border-radius:12px;padding:12px;max-height:180px;overflow:auto;color:#b9c7df;font-size:11px}
+#fileInfo{font-size:13px;color:var(--lime);overflow-wrap:anywhere}a.download{display:block;text-align:center;text-decoration:none;background:var(--pink);color:#21101a;font-weight:900;padding:15px;border-radius:13px;margin-top:12px}
+.warning{border-left:3px solid var(--pink);padding:8px 12px;background:#291b2b;border-radius:8px;font-size:12px;color:#f5dce5;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+ <div class="brand">PERSONAL VIDEO TOOLKIT</div>
+ <h1>Transcode Studio</h1>
+ <p>Alat pribadi untuk menyiapkan video sebelum upload TikTok. Pemrosesan dilakukan di browser; file tidak diunggah ke server aplikasi.</p>
+
+ <section class="panel">
+  <div class="row"><b>01 · Pilih mode</b><span class="pill">3 MODE</span></div>
+  <div class="modes" style="margin-top:12px">
+   <button class="mode" data-mode="pulse"><b>⚡ Pulse</b><small>Output 1080p, cocok untuk file lebih ringan.</small></button>
+   <button class="mode active" data-mode="forge"><b>🔥 Forge</b><small>Encode ulang H.264 kualitas tinggi, target 4K 60.</small></button>
+   <button class="mode" data-mode="nova"><b>✦ Nova</b><small>Remux tanpa encode ulang video; kualitas video tetap.</small></button>
+  </div>
+  <p id="modeDesc" class="muted">Forge: encode ulang ke H.264 dengan CRF 18. Resolusi sumber dipertahankan.</p>
+ </section>
+
+ <section class="panel">
+  <b>02 · Pilih video</b>
+  <label class="pick" for="videoFile">Pilih video dari iPhone</label>
+  <input id="videoFile" type="file" accept="video/*,.mp4,.mov,.m4v">
+  <div id="fileInfo" style="margin-top:10px">Belum ada video dipilih.</div>
+  <div class="warning" style="margin-top:12px">Catatan iPhone: proses 4K berdurasi panjang bisa sangat berat dan Safari dapat menutup tab karena memori. Mulai tes dengan video 5–15 detik. Simpan file asli.</div>
+ </section>
+
+ <section class="panel">
+  <div class="row"><b>03 · Pengaturan</b><span class="pill">ADVANCED</span></div>
+  <label for="fps">Frame rate output (Forge/Pulse)</label>
+  <select id="fps"><option value="keep">Ikuti sumber (disarankan)</option><option value="60">Paksa 60 FPS</option><option value="30">30 FPS</option></select>
+  <label for="quality">Kualitas encode (Forge/Pulse)</label>
+  <select id="quality"><option value="18">Sangat tinggi · CRF 18</option><option value="20">Tinggi · CRF 20</option><option value="23">Standar · CRF 23</option></select>
+  <p class="muted">CRF lebih kecil = kualitas lebih tinggi dan ukuran file biasanya lebih besar. Nova mengabaikan pengaturan encode karena tidak meng-encode ulang video.</p>
+ </section>
+
+ <section class="panel">
+  <b>04 · Mesin FFmpeg</b>
+  <p class="muted">Pertama kali perlu mengunduh mesin FFmpeg sekitar puluhan MB. Gunakan Wi-Fi dan jangan tutup tab.</p>
+  <button id="loadBtn">Muat mesin FFmpeg</button>
+  <p id="engineStatus" class="muted">Belum dimuat.</p>
+  <button id="runBtn" disabled>Mulai transcode</button>
+  <div style="margin-top:14px"><progress id="progress" max="100" value="0"></progress><div id="status" class="muted">Menunggu.</div></div>
+  <pre id="log">Log proses akan tampil di sini.</pre>
+  <div id="result"></div>
+ </section>
+ <p class="muted">Privasi: file diproses di browser. Library FFmpeg dimuat dari CDN saat pertama kali digunakan. Aplikasi ini independen dan bukan produk resmi Vague Transcode atau TikTok.</p>
+</main>
+<script type="module">
+import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
+
+const $=id=>document.getElementById(id);
+let ffmpeg=null, file=null, mode='forge', busy=false, outputUrl=null;
+const descriptions={
+ pulse:'Pulse: skala sisi terpanjang ke 1920 piksel, H.264 CRF terpilih. Ini bukan 4K.',
+ forge:'Forge: encode ulang ke H.264 dengan CRF terpilih. Resolusi sumber dipertahankan.',
+ nova:'Nova: remux MP4 tanpa encode ulang video. Kualitas video tetap, tetapi codec sumber juga tetap.'
+};
+document.querySelectorAll('.mode').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));
+ btn.classList.add('active'); mode=btn.dataset.mode; $('modeDesc').textContent=descriptions[mode];
+}));
+$('videoFile').addEventListener('change',e=>{
+ file=e.target.files?.[0]||null; $('result').innerHTML='';
+ $('fileInfo').textContent=file?`${file.name} · ${(file.size/1024/1024).toFixed(1)} MB · ${file.type||'tipe tidak diketahui'}`:'Belum ada video dipilih.';
+ $('runBtn').disabled=!ffmpeg||!file||busy;
+});
+function log(s){$('log').textContent=(s+'\n'+$('log').textContent).slice(0,7000)}
+function setStatus(s){$('status').textContent=s}
+$('loadBtn').addEventListener('click',async()=>{
+ if(ffmpeg||busy)return; busy=true; $('loadBtn').disabled=true; setStatus('Mengunduh dan memuat mesin FFmpeg…');
+ try{
+  ffmpeg=new FFmpeg();
+  ffmpeg.on('log',({message})=>log(message));
+  ffmpeg.on('progress',({progress})=>{if(Number.isFinite(progress))$('progress').value=Math.max(0,Math.min(100,progress*100));});
+  const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
+  await ffmpeg.load({coreURL:await toBlobURL(base+'/ffmpeg-core.js','text/javascript'),wasmURL:await toBlobURL(base+'/ffmpeg-core.wasm','application/wasm')});
+  $('engineStatus').textContent='Mesin siap.'; setStatus('FFmpeg siap. Pilih video.'); $('runBtn').disabled=!file;
+ }catch(err){setStatus('Gagal memuat mesin: '+err.message);log(String(err));$('loadBtn').disabled=false;ffmpeg=null;}
+ busy=false;
+});
+$('runBtn').addEventListener('click',async()=>{
+ if(!ffmpeg||!file||busy)return;
+ busy=true; $('runBtn').disabled=true; $('loadBtn').disabled=true; $('progress').value=0; $('result').innerHTML='';
+ const ext=(file.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
+ const input='input.'+ext, output='transcode-output.mp4';
+ try{
+  setStatus('Membaca file…'); await ffmpeg.writeFile(input,await fetchFile(file));
+  let args=['-i',input,'-map','0:v:0','-map','0:a?'];
+  if(mode==='nova'){
+   args.push('-c:v','copy','-c:a','aac','-b:a','320k','-movflags','+faststart',output);
+  }else{
+   args.push('-vf',mode==='pulse'?"scale='if(gte(iw,ih),min(iw,1920),-2)':'if(gte(iw,ih),-2,min(ih,1920))'":'null',
+    '-c:v','libx264','-preset','ultrafast','-crf',$('quality').value,'-pix_fmt','yuv420p');
+   const fps=$('fps').value;if(fps!=='keep')args.push('-r',fps,'-fps_mode','cfr');
+   args.push('-c:a','aac','-b:a','320k','-movflags','+faststart',output);
+  }
+  setStatus('Memproses video… jangan tutup tab atau kunci layar.');
+  await ffmpeg.exec(args);
+  const data=await ffmpeg.readFile(output);
+  const blob=new Blob([data.buffer],{type:'video/mp4'});
+  if(outputUrl)URL.revokeObjectURL(outputUrl); outputUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.className='download';a.href=outputUrl;a.download='tiktok-'+mode+'-output.mp4';a.textContent='Simpan hasil MP4';$('result').appendChild(a);
+  $('progress').value=100;setStatus('Selesai. Ukuran hasil: '+(blob.size/1024/1024).toFixed(1)+' MB. Putar dan periksa sebelum upload.');
+ }catch(err){setStatus('Proses gagal atau memori perangkat tidak cukup. Coba klip lebih pendek.');log(String(err));}
+ finally{
+  try{await ffmpeg.deleteFile(input);await ffmpeg.deleteFile(output);}catch(e){}
+  busy=false;$('loadBtn').disabled=false;$('runBtn').disabled=!file;
+ }
+});
+</script>
+</body></html>
